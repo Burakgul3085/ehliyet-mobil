@@ -258,10 +258,10 @@ class _HomePageState extends State<HomePage> {
               const SizedBox(height: 8),
               Row(
                 children: [
-                  const Expanded(child: Text('Nurettin Mustafa Özkaya')),
+                  const Expanded(child: Text('Burak Gül')),
                   TextButton(
                     onPressed: () async {
-                      final uri = Uri.parse('https://linktr.ee/mustafaaozk');
+                      final uri = Uri.parse('https://www.linkedin.com/in/burakgul1006/');
                       if (await canLaunchUrl(uri)) {
                         await launchUrl(
                           uri,
@@ -269,25 +269,65 @@ class _HomePageState extends State<HomePage> {
                         );
                       }
                     },
-                    child: const Text('linktr.ee/mustafaaozk'),
+                    child: const Text('linkedln.com/burakgul1006'),
                   ),
                 ],
               ),
               const SizedBox(height: 4),
               Row(
                 children: [
-                  const Expanded(child: Text('Mervan Tahir Kösen')),
+                  const Expanded(child: Text('Eyüp Hürkan Artan')),
+                  TextButton(
+                    onPressed: () async {
+                      final uri = Uri.parse('https://www.linkedin.com/in/ey%C3%BCp-h%C3%BCrkan-artan-996669237/');
+                      if (await canLaunchUrl(uri)) {
+                        await launchUrl(
+                          uri,
+                          mode: LaunchMode.externalApplication,
+                        );
+                      }
+                    },
+                    child: const Text('linkedln.com/eyuphurkan'),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                'Yardım ve Destek',
+                style: TextStyle(fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  const Expanded(child: Text('E-posta')),
                   TextButton(
                     onPressed: () async {
                       final uri = Uri(
                         scheme: 'mailto',
-                        path: 'mervantahirkosen@gmail.com',
+                        path: 'burakgul3085@gmail.com',
                       );
                       if (await canLaunchUrl(uri)) {
                         await launchUrl(uri);
                       }
                     },
-                    child: const Text('mervantahirkosen@gmail.com'),
+                    child: const Text('burakgul3085@gmail.com'),
+                  ),
+                ],
+              ),
+              Row(
+                children: [
+                  const Expanded(child: Text('E-posta')),
+                  TextButton(
+                    onPressed: () async {
+                      final uri = Uri(
+                        scheme: 'mailto',
+                        path: 'eyuphurkan@gmail.com',
+                      );
+                      if (await canLaunchUrl(uri)) {
+                        await launchUrl(uri);
+                      }
+                    },
+                    child: const Text('eyuphurkan@gmail.com'),
                   ),
                 ],
               ),
@@ -303,7 +343,7 @@ class _HomePageState extends State<HomePage> {
           TextButton(
             onPressed: () async {
               final uri = Uri.parse(
-                'https://github.com/nmustafaozkaya/TrafikKocu-privacy/blob/main/privacy-policy.md',
+                'https://github.com/Burakgul3085/',
               );
               if (await canLaunchUrl(uri)) {
                 await launchUrl(uri, mode: LaunchMode.externalApplication);
