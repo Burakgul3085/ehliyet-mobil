@@ -275,52 +275,62 @@ class _RandomCategoryQuizPageState extends State<RandomCategoryQuizPage> {
     );
   }
 
-  Widget _buildAnswerContent(dynamic cevap) {
-    if (cevap is Map<String, dynamic>) {
-      final String metin = cevap['metin'] ?? '';
-      final String resimUrl = cevap['resim_url'] ?? '';
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            metin,
-            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+ Widget _buildAnswerContent(dynamic cevap) {
+  if (cevap is Map<String, dynamic>) {
+    final String metin = cevap['metin'] ?? '';
+    final String resimUrl = cevap['resim_url'] ?? '';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          metin,
+          style: const TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.w600,
           ),
-          if (resimUrl.isNotEmpty) ...[
-            const SizedBox(height: 8),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: Container(
-                height: 140,
-                width: double.infinity,
-                color: Colors.black12,
-                alignment: Alignment.center,
-                child: Image.network(
-                  resimUrl,
-                  fit: BoxFit.contain,
-                  filterQuality: FilterQuality.medium,
-                  errorBuilder: (context, error, stackTrace) {
-                    return const Icon(
-                      Icons.image_not_supported,
-                      color: Colors.grey,
-                      size: 50,
-                    );
-                  },
-                  loadingBuilder: (context, child, loadingProgress) {
-                    if (loadingProgress == null) return child;
-                    return const Center(child: CircularProgressIndicator());
-                  },
-                ),
+        ),
+        if (resimUrl.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: Container(
+              height: 140,
+              width: double.infinity,
+              color: Colors.black12,
+              alignment: Alignment.center,
+              child: Image.network(
+                resimUrl,
+                fit: BoxFit.contain,
+                filterQuality: FilterQuality.medium,
+                errorBuilder: (context, error, stackTrace) {
+                  return const Icon(
+                    Icons.image_not_supported,
+                    color: Colors.grey,
+                    size: 50,
+                  );
+                },
+                loadingBuilder: (context, child, loadingProgress) {
+                  if (loadingProgress == null) return child;
+                  return const Center(
+                    child: CircularProgressIndicator(),
+                  );
+                },
               ),
             ),
-          ],
+          ),
         ],
-      );
-    } else {
-      return Text(
-        cevap.toString(),
-        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-      );
-    }
+      ],
+    );
+  } else {
+    return Text(
+      cevap.toString(),
+      style: const TextStyle(
+        fontSize: 16,
+        fontWeight: FontWeight.w600,
+      ),
+    );
   }
+}
+
 }

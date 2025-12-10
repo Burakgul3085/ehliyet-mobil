@@ -17,6 +17,8 @@ import 'pages/quiz_questions_page.dart';
 import 'pages/traffic_signs_page.dart';
 import 'pages/police_isaretleri_page.dart';
 import 'pages/hiz_kurallari_page.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -238,6 +240,152 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
+  // 🧠 Trafik Koçu yapay zekâ sohbet endpoint'i
+  static const String _aiChatUrl =
+      'https://trafficcoachchat-3l4xnlf4ba-uc.a.run.app';
+
+  // Ana sayfadan açılacak yapay zekâ bottom sheet'i
+  void _openTrafficCoachChat({String? topicHint}) {
+    final TextEditingController controller = TextEditingController();
+    String? aiAnswer;
+    bool sending = false;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Theme.of(context).dialogBackgroundColor,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (sheetContext) {
+        final isDark = Theme.of(sheetContext).brightness == Brightness.dark;
+        final bottomInset = MediaQuery.of(sheetContext).viewInsets.bottom;
+
+        return Padding(
+          padding: EdgeInsets.fromLTRB(16, 16, 16, 16 + bottomInset),
+          child: StatefulBuilder(
+            builder: (context, setState) {
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.smart_toy_outlined),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Trafik Koçu Yapay Zekâ',
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                      const Spacer(),
+                      IconButton(
+                        icon: const Icon(Icons.close),
+                        onPressed: () => Navigator.of(sheetContext).pop(),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  if (topicHint != null && topicHint.isNotEmpty) ...[
+                    Text(
+                      'Konu: $topicHint',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                    const SizedBox(height: 8),
+                  ],
+                  TextField(
+                    controller: controller,
+                    minLines: 2,
+                    maxLines: 5,
+                    decoration: const InputDecoration(
+                      labelText: 'Ehliyet / trafik ile ilgili sorunuzu yazın',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: sending
+                          ? null
+                          : () async {
+                              final text = controller.text.trim();
+                              if (text.isEmpty) return;
+
+                              setState(() {
+                                sending = true;
+                                aiAnswer = null;
+                              });
+
+                              try {
+                                final resp = await http.post(
+                                  Uri.parse(_aiChatUrl),
+                                  headers: {
+                                    'Content-Type': 'application/json',
+                                  },
+                                  body: jsonEncode({
+                                    'question': text,
+                                  }),
+                                );
+
+                               if (resp.statusCode == 200) {
+  // ⭐ TÜRKÇE İÇİN UTF-8 DECODE
+  final decodedBody = utf8.decode(resp.bodyBytes);
+  final data = jsonDecode(decodedBody) as Map<String, dynamic>;
+  setState(() {
+    aiAnswer = (data['answer'] ?? '').toString();
+  });
+} else {
+  setState(() {
+    aiAnswer = 'Cevap alınamadı (HTTP ${resp.statusCode}).';
+  });
+}
+                              } catch (e) {
+                                setState(() {
+                                  aiAnswer = 'Bir hata oluştu: $e';
+                                });
+                              } finally {
+                                setState(() {
+                                  sending = false;
+                                });
+                              }
+                            },
+                      icon: sending
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                              ),
+                            )
+                          : const Icon(Icons.send),
+                      label: Text(
+                        sending ? 'Gönderiliyor...' : 'Soruyu Gönder',
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  if (aiAnswer != null && aiAnswer!.isNotEmpty)
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: isDark ? Colors.white10 : Colors.grey[100],
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        aiAnswer!,
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                    ),
+                ],
+              );
+            },
+          ),
+        );
+      },
+    );
+  }
+
   void _showAboutCustom() async {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     showDialog(
@@ -261,7 +409,8 @@ class _HomePageState extends State<HomePage> {
                   const Expanded(child: Text('Burak Gül')),
                   TextButton(
                     onPressed: () async {
-                      final uri = Uri.parse('https://www.linkedin.com/in/burakgul1006/');
+                      final uri = Uri.parse(
+                          'https://www.linkedin.com/in/burakgul1006/');
                       if (await canLaunchUrl(uri)) {
                         await launchUrl(
                           uri,
@@ -279,7 +428,8 @@ class _HomePageState extends State<HomePage> {
                   const Expanded(child: Text('Eyüp Hürkan Artan')),
                   TextButton(
                     onPressed: () async {
-                      final uri = Uri.parse('https://www.linkedin.com/in/ey%C3%BCp-h%C3%BCrkan-artan-996669237/');
+                      final uri = Uri.parse(
+                          'https://www.linkedin.com/in/ey%C3%BCp-h%C3%BCrkan-artan-996669237/');
                       if (await canLaunchUrl(uri)) {
                         await launchUrl(
                           uri,
@@ -380,220 +530,222 @@ class _HomePageState extends State<HomePage> {
     _loadProgress();
   }
 
+
   Future<Map<String, dynamic>?> _getDailyQuestionData() async {
-    try {
-      // Tüm soruları getir
-      final snap = await FirebaseFirestore.instance.collection('sorular').get();
+  try {
+    // Tüm soruları getir
+    final snap = await FirebaseFirestore.instance.collection('sorular').get();
 
-      if (snap.docs.isEmpty) {
-        print('No questions found in Firestore');
-        return null;
+    if (snap.docs.isEmpty) {
+      print('No questions found in Firestore');
+      return null;
+    }
+
+    final docs = snap.docs.map((e) => e.data()).toList();
+
+    DateTime? parseExamDate(Map<String, dynamic> d) {
+      final dynamic yilRaw = d['yıl'];
+      final dynamic ayRaw = d['ay'];
+      final dynamic gunRaw = d['gün'];
+
+      final int yil = yilRaw is int
+          ? yilRaw
+          : int.tryParse((yilRaw ?? '').toString()) ?? 0;
+
+      final int gun = gunRaw is int
+          ? gunRaw
+          : int.tryParse((gunRaw ?? '').toString()) ?? 0;
+
+      int monthNumber = 0;
+      if (ayRaw is int) {
+        monthNumber = ayRaw;
+      } else {
+        final String ayText = (ayRaw ?? '').toString();
+        // Accept both Turkish month names and numeric strings
+        monthNumber = int.tryParse(ayText) ?? _getMonthNumber(ayText);
       }
 
-      final docs = snap.docs.map((e) => e.data()).toList();
-
-      DateTime? parseExamDate(Map<String, dynamic> d) {
-        final dynamic yilRaw = d['yıl'];
-        final dynamic ayRaw = d['ay'];
-        final dynamic gunRaw = d['gün'];
-
-        final int yil = yilRaw is int
-            ? yilRaw
-            : int.tryParse((yilRaw ?? '').toString()) ?? 0;
-
-        final int gun = gunRaw is int
-            ? gunRaw
-            : int.tryParse((gunRaw ?? '').toString()) ?? 0;
-
-        int monthNumber = 0;
-        if (ayRaw is int) {
-          monthNumber = ayRaw;
-        } else {
-          final String ayText = (ayRaw ?? '').toString();
-          // Accept both Turkish month names and numeric strings
-          monthNumber = int.tryParse(ayText) ?? _getMonthNumber(ayText);
-        }
-
-        if (yil > 0 && monthNumber > 0 && gun > 0) {
-          try {
-            return DateTime(yil, monthNumber, gun);
-          } catch (_) {
-            return null;
-          }
-        }
-        return null;
-      }
-
-      // Bugünün tarihinden başlayarak geriye doğru git
-      DateTime currentDate = DateTime.now();
-      DateTime? foundDate;
-      List<Map<String, dynamic>> foundExamQuestions = [];
-
-      // Maksimum 30 gün geriye git (1 ay)
-      for (int i = 0; i < 30; i++) {
-        final checkDate = DateTime(
-          currentDate.year,
-          currentDate.month,
-          currentDate.day - i,
-        );
-
-        // Bu tarihteki soruları ara (ay değeri hem sayı hem isim olabilir)
-        final examQuestions = docs.where((d) {
-          final examDate = parseExamDate(d);
-          if (examDate == null) return false;
-          return examDate.year == checkDate.year &&
-              examDate.month == checkDate.month &&
-              examDate.day == checkDate.day;
-        }).toList();
-
-        // Eğer bu tarihte soru bulunduysa, onları döndür
-        if (examQuestions.isNotEmpty) {
-          foundExamQuestions = examQuestions;
-          foundDate = checkDate;
-          print(
-            'Found exam on date: ${checkDate.day}/${checkDate.month}/${checkDate.year}',
-          );
-          print('Total questions found: ${foundExamQuestions.length}');
-          break;
-        }
-      }
-
-      if (foundExamQuestions.isEmpty || foundDate == null) {
-        // 30 gün içinde bulunamadıysa, en yakın (en yeni) tarihi seç ve onu kullan
-        print(
-          'No exam questions found in the last 30 days, falling back to latest date.',
-        );
-        DateTime? latestDate;
-        for (final d in docs) {
-          final dt = parseExamDate(d);
-          if (dt == null) continue;
-          if (latestDate == null || dt.isAfter(latestDate)) {
-            latestDate = dt;
-          }
-        }
-        if (latestDate != null) {
-          foundDate = latestDate;
-          final ld = latestDate;
-          foundExamQuestions = docs.where((d) {
-            final dt = parseExamDate(d);
-            return dt != null &&
-                dt.year == ld.year &&
-                dt.month == ld.month &&
-                dt.day == ld.day;
-          }).toList();
-        }
-        if (foundExamQuestions.isEmpty || foundDate == null) {
+      if (yil > 0 && monthNumber > 0 && gun > 0) {
+        try {
+          return DateTime(yil, monthNumber, gun);
+        } catch (_) {
           return null;
         }
       }
-
-      // Bulunan tarihi döndür (QuizQuestionsPage için)
-      final result = <String, dynamic>{
-        'yil': foundDate.year,
-        'ay': _getMonthName(foundDate.month),
-        'gun': foundDate.day,
-        'totalQuestions': foundExamQuestions.length,
-      };
-
-      return result;
-    } catch (e) {
-      print('Error getting daily exam data: $e');
       return null;
     }
-  }
 
-  int _getMonthNumber(String monthName) {
-    final months = {
-      'Ocak': 1,
-      'Şubat': 2,
-      'Mart': 3,
-      'Nisan': 4,
-      'Mayıs': 5,
-      'Haziran': 6,
-      'Temmuz': 7,
-      'Ağustos': 8,
-      'Eylül': 9,
-      'Ekim': 10,
-      'Kasım': 11,
-      'Aralık': 12,
-    };
-    return months[monthName] ?? 0;
-  }
+    // Bugünün tarihinden başlayarak geriye doğru git
+    DateTime currentDate = DateTime.now();
+    DateTime? foundDate;
+    List<Map<String, dynamic>> foundExamQuestions = [];
 
-  String _getMonthName(int monthNumber) {
-    final months = {
-      1: 'Ocak',
-      2: 'Şubat',
-      3: 'Mart',
-      4: 'Nisan',
-      5: 'Mayıs',
-      6: 'Haziran',
-      7: 'Temmuz',
-      8: 'Ağustos',
-      9: 'Eylül',
-      10: 'Ekim',
-      11: 'Kasım',
-      12: 'Aralık',
-    };
-    return months[monthNumber] ?? 'Ocak';
-  }
+    // Maksimum 30 gün geriye git (1 ay)
+    for (int i = 0; i < 30; i++) {
+      final checkDate = DateTime(
+        currentDate.year,
+        currentDate.month,
+        currentDate.day - i,
+      );
 
-  Future<void> _loadProgress() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
+      // Bu tarihteki soruları ara (ay değeri hem sayı hem isim olabilir)
+      final examQuestions = docs.where((d) {
+        final examDate = parseExamDate(d);
+        if (examDate == null) return false;
+        return examDate.year == checkDate.year &&
+            examDate.month == checkDate.month &&
+            examDate.day == checkDate.day;
+      }).toList();
 
-      // First, get all available exams from Firebase
-      final snapshot = await FirebaseFirestore.instance
-          .collection('sorular')
-          .get();
-      final docs = snapshot.docs.map((e) => e.data()).toList();
-
-      // Get unique exam dates
-      final Map<String, Map<String, dynamic>> uniqueDates = {};
-      for (final d in docs) {
-        final int yil = d['yıl'] is int ? d['yıl'] as int : 0;
-        final String ay = (d['ay'] ?? '').toString();
-        final int gun = d['gün'] is int ? d['gün'] as int : 0;
-        final key = '$gun|$ay|$yil';
-        uniqueDates[key] = {'gün': gun, 'ay': ay, 'yıl': yil};
+      // Eğer bu tarihte soru bulunduysa, onları döndür
+      if (examQuestions.isNotEmpty) {
+        foundExamQuestions = examQuestions;
+        foundDate = checkDate;
+        print(
+          'Found exam on date: ${checkDate.day}/${checkDate.month}/${checkDate.year}',
+        );
+        print('Total questions found: ${foundExamQuestions.length}');
+        break;
       }
-
-      final dateItems = uniqueDates.values.toList();
-      // Calculate totals
-      int totalSolved = 0;
-      int totalQuestions = 0;
-
-      for (final item in dateItems) {
-        final int yil = item['yıl'] as int;
-        final String ay = item['ay'] as String;
-        final int gun = item['gün'] as int;
-        final examKey = 'y$yil-$ay-g$gun';
-
-        // Count questions for this exam
-        final examQuestions = docs
-            .where((d) => d['yıl'] == yil && d['ay'] == ay && d['gün'] == gun)
-            .length;
-
-        totalQuestions += examQuestions;
-
-        // Get solved count from SharedPreferences
-        final solved = prefs.getInt('exam_solved_$examKey') ?? 0;
-        totalSolved += solved;
-
-        // We no longer track per-exam completion breakdown on the home header
-      }
-
-      setState(() {
-        _totalQuestions = totalQuestions;
-        _solvedQuestions = totalSolved;
-        _passProbability = totalQuestions > 0
-            ? (totalSolved / totalQuestions).clamp(0.0, 1.0)
-            : 0.0;
-      });
-    } catch (e) {
-      print('Error loading progress: $e');
     }
+
+    if (foundExamQuestions.isEmpty || foundDate == null) {
+      // 30 gün içinde bulunamadıysa, en yakın (en yeni) tarihi seç ve onu kullan
+      print(
+        'No exam questions found in the last 30 days, falling back to latest date.',
+      );
+      DateTime? latestDate;
+      for (final d in docs) {
+        final dt = parseExamDate(d);
+        if (dt == null) continue;
+        if (latestDate == null || dt.isAfter(latestDate)) {
+          latestDate = dt;
+        }
+      }
+      if (latestDate != null) {
+        foundDate = latestDate;
+        final ld = latestDate;
+        foundExamQuestions = docs.where((d) {
+          final dt = parseExamDate(d);
+          return dt != null &&
+              dt.year == ld.year &&
+              dt.month == ld.month &&
+              dt.day == ld.day;
+        }).toList();
+      }
+      if (foundExamQuestions.isEmpty || foundDate == null) {
+        return null;
+      }
+    }
+
+    // Bulunan tarihi döndür (QuizQuestionsPage için)
+    final result = <String, dynamic>{
+      'yil': foundDate.year,
+      'ay': _getMonthName(foundDate.month),
+      'gun': foundDate.day,
+      'totalQuestions': foundExamQuestions.length,
+    };
+
+    return result;
+  } catch (e) {
+    print('Error getting daily exam data: $e');
+    return null;
   }
+}
+
+int _getMonthNumber(String monthName) {
+  final months = {
+    'Ocak': 1,
+    'Şubat': 2,
+    'Mart': 3,
+    'Nisan': 4,
+    'Mayıs': 5,
+    'Haziran': 6,
+    'Temmuz': 7,
+    'Ağustos': 8,
+    'Eylül': 9,
+    'Ekim': 10,
+    'Kasım': 11,
+    'Aralık': 12,
+  };
+  return months[monthName] ?? 0;
+}
+
+String _getMonthName(int monthNumber) {
+  final months = {
+    1: 'Ocak',
+    2: 'Şubat',
+    3: 'Mart',
+    4: 'Nisan',
+    5: 'Mayıs',
+    6: 'Haziran',
+    7: 'Temmuz',
+    8: 'Ağustos',
+    9: 'Eylül',
+    10: 'Ekim',
+    11: 'Kasım',
+    12: 'Aralık',
+  };
+  return months[monthNumber] ?? 'Ocak';
+}
+
+Future<void> _loadProgress() async {
+  try {
+    final prefs = await SharedPreferences.getInstance();
+
+    // First, get all available exams from Firebase
+    final snapshot = await FirebaseFirestore.instance
+        .collection('sorular')
+        .get();
+    final docs = snapshot.docs.map((e) => e.data()).toList();
+
+    // Get unique exam dates
+    final Map<String, Map<String, dynamic>> uniqueDates = {};
+    for (final d in docs) {
+      final int yil = d['yıl'] is int ? d['yıl'] as int : 0;
+      final String ay = (d['ay'] ?? '').toString();
+      final int gun = d['gün'] is int ? d['gün'] as int : 0;
+      final key = '$gun|$ay|$yil';
+      uniqueDates[key] = {'gün': gun, 'ay': ay, 'yıl': yil};
+    }
+
+    final dateItems = uniqueDates.values.toList();
+    // Calculate totals
+    int totalSolved = 0;
+    int totalQuestions = 0;
+
+    for (final item in dateItems) {
+      final int yil = item['yıl'] as int;
+      final String ay = item['ay'] as String;
+      final int gun = item['gün'] as int;
+      final examKey = 'y$yil-$ay-g$gun';
+
+      // Count questions for this exam
+      final examQuestions = docs
+          .where((d) => d['yıl'] == yil && d['ay'] == ay && d['gün'] == gun)
+          .length;
+
+      totalQuestions += examQuestions;
+
+      // Get solved count from SharedPreferences
+      final solved = prefs.getInt('exam_solved_$examKey') ?? 0;
+      totalSolved += solved;
+
+      // We no longer track per-exam completion breakdown on the home header
+    }
+
+    setState(() {
+      _totalQuestions = totalQuestions;
+      _solvedQuestions = totalSolved;
+      _passProbability = totalQuestions > 0
+          ? (totalSolved / totalQuestions).clamp(0.0, 1.0)
+          : 0.0;
+    });
+  } catch (e) {
+    print('Error loading progress: $e');
+  }
+}
+
 
   Future<void> _openInstagram() async {
     const String instagramUrl =
@@ -646,7 +798,7 @@ class _HomePageState extends State<HomePage> {
     const String message =
         'Trafik Koçu uygulamasını dene! Sınav soruları, işaretler ve daha fazlası.';
     const String androidUrl =
-        'https://play.google.com/store/apps/details?id=com.trafikkocu.app';
+        'https://play.google.com/store/games?hl=tr';
     final shareText = '$message\n\nAndroid: $androidUrl';
     try {
       await Share.share(shareText, subject: 'Trafik Koçu');
@@ -1112,8 +1264,8 @@ class _HomePageState extends State<HomePage> {
     const String maleInstructorName = 'Hakim Hoca';
     const String femaleInstructorName = 'Ece Hoca';
     // Update these numbers with country code, without leading + or 00
-    const String maleInstructorPhone = '905469331747';
-    const String femaleInstructorPhone = '905449331747';
+    const String maleInstructorPhone = '905426588530';
+    const String femaleInstructorPhone = '905426588530';
 
     Future<void> openWhatsApp(String phone, String name) async {
       final message =
