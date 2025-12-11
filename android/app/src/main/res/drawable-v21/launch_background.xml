@@ -12,7 +12,7 @@
             android:insetBottom="64dp">
             <bitmap
                 android:gravity="center"
-                android:src="@mipmap/ic_launcher" />
+                android:src="@mipmap/ic_launcher2" />
         </inset>
     </item>
 </layer-list>

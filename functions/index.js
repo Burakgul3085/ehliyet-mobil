@@ -1,7 +1,16 @@
+// functions/index.js
+
 // ✅ V2 Functions import
 const { setGlobalOptions } = require("firebase-functions/v2");
 const { onRequest } = require("firebase-functions/v2/https");
 const logger = require("firebase-functions/logger");
+
+// ✅ Firestore (admin SDK) – veritabanına erişmek için
+const admin = require("firebase-admin");
+if (!admin.apps.length) {
+  admin.initializeApp();
+}
+const db = admin.firestore();
 
 // --------------------------------------------------------------------
 // Global ayarlar
@@ -190,12 +199,281 @@ function normalizeAnswerText(raw) {
 }
 
 // --------------------------------------------------------------------
+// Firestore yardımcıları (sınav sayıları + soru çekme)
+// --------------------------------------------------------------------
+
+// Ay isimleri
+const MONTH_MAP = {
+  ocak: 1,
+  şubat: 2,
+  subat: 2,
+  mart: 3,
+  nisan: 4,
+  mayıs: 5,
+  mayis: 5,
+  haziran: 6,
+  temmuz: 7,
+  ağustos: 8,
+  agustos: 8,
+  eylül: 9,
+  eylul: 9,
+  ekim: 10,
+  kasım: 11,
+  kasim: 11,
+  aralık: 12,
+  aralik: 12,
+};
+
+const MONTH_NAME_TR = {
+  1: "Ocak",
+  2: "Şubat",
+  3: "Mart",
+  4: "Nisan",
+  5: "Mayıs",
+  6: "Haziran",
+  7: "Temmuz",
+  8: "Ağustos",
+  9: "Eylül",
+  10: "Ekim",
+  11: "Kasım",
+  12: "Aralık",
+};
+
+// Metinden "10 temmuz 2024" gibi tarihi yakala
+function parseTurkishDateFromText(text) {
+  const re =
+    /(\d{1,2})\s+(ocak|şubat|subat|mart|nisan|mayıs|mayis|haziran|temmuz|ağustos|agustos|eylül|eylul|ekim|kasım|kasim|aralık|aralik)\s+(\d{4})/;
+  const m = text.match(re);
+  if (!m) return null;
+  const gun = parseInt(m[1], 10);
+  const ayKey = m[2];
+  const yil = parseInt(m[3], 10);
+  const monthNumber = MONTH_MAP[ayKey] || 0;
+  if (!gun || !yil || !monthNumber) return null;
+  return {
+    gun,
+    yil,
+    monthNumber,
+    monthName: MONTH_NAME_TR[monthNumber] || "Ocak",
+  };
+}
+
+// Firestore dokümanından soru JSON'u üret
+function buildQuestionFromDocData(data) {
+  if (!data || typeof data !== "object") return null;
+
+  const text =
+    data.soruMetni ||
+    data.soru ||
+    data.questionText ||
+    data.question ||
+    "";
+
+  let options = [];
+  if (Array.isArray(data.secenekler)) {
+    options = data.secenekler.map((opt, idx) => {
+      const label = ["A", "B", "C", "D", "E"][idx] || "";
+      return label ? `${label}) ${opt}` : String(opt);
+    });
+  } else {
+    const a =
+      data.A || data.a || data.şıkA || data.sikA || data["A şıkkı"] || null;
+    const b =
+      data.B || data.b || data.şıkB || data.sikB || data["B şıkkı"] || null;
+    const c =
+      data.C || data.c || data.şıkC || data.sikC || data["C şıkkı"] || null;
+    const d =
+      data.D || data.d || data.şıkD || data.sikD || data["D şıkkı"] || null;
+
+    if (a) options.push(`A) ${a}`);
+    if (b) options.push(`B) ${b}`);
+    if (c) options.push(`C) ${c}`);
+    if (d) options.push(`D) ${d}`);
+  }
+
+  let correctIndex = null;
+  if (typeof data.correctIndex === "number") {
+    correctIndex = data.correctIndex;
+  } else if (typeof data.dogruSecenekIndex === "number") {
+    correctIndex = data.dogruSecenekIndex;
+  } else if (typeof data.dogruCevapIndex === "number") {
+    correctIndex = data.dogruCevapIndex;
+  } else if (data.cevap || data.dogruCevap) {
+    const answerLetter = String(data.cevap || data.dogruCevap)
+      .trim()
+      .toUpperCase()
+      .replace(/ŞIK|ŞIKKI|SECENEK|SEÇENEK/g, "")
+      .trim();
+    const map = { A: 0, B: 1, C: 2, D: 3, E: 4 };
+    if (map.hasOwnProperty(answerLetter)) {
+      correctIndex = map[answerLetter];
+    }
+  }
+
+  if (!text) return null;
+
+  return {
+    text,
+    options,
+    correctIndex,
+  };
+}
+
+// Belirli bir tarihten (gün/ay/yıl) bir soru çek
+// 🔧 BURASI DÜZELTİLDİ (tüm soruları çekip JS tarafında yıl/gün/ay filtreliyoruz)
+async function getQuestionByDateFromFirestore(gun, monthName, yil, soruNo) {
+  try {
+    // Tüm soruları çek (dataset büyük değilse sorun olmaz, küçük projede gayet yeterli)
+    const snap = await db.collection("sorular").get();
+
+    if (snap.empty) return null;
+
+    const targetMonthNumber =
+      typeof monthName === "number"
+        ? monthName
+        : MONTH_MAP[String(monthName || "").toLowerCase()] || 0;
+
+    const docs = snap.docs
+      .map((d) => d.data())
+      .filter((d) => {
+        // Yıl
+        const yilRaw = d["yıl"] ?? d["yil"];
+        const year =
+          typeof yilRaw === "number"
+            ? yilRaw
+            : parseInt(String(yilRaw || "0"), 10) || 0;
+
+        // Gün
+        const dayRaw = d["gün"] ?? d["gun"];
+        const day =
+          typeof dayRaw === "number"
+            ? dayRaw
+            : parseInt(String(dayRaw || "0"), 10) || 0;
+
+        // Ay (hem isim hem sayı desteği)
+        const ayRaw = d["ay"];
+        let monthVal = 0;
+        if (typeof ayRaw === "number") {
+          monthVal = ayRaw;
+        } else if (typeof ayRaw === "string") {
+          const lower = ayRaw.toLowerCase();
+          const fromMap = MONTH_MAP[lower];
+          if (fromMap) {
+            monthVal = fromMap;
+          } else {
+            const parsed = parseInt(ayRaw, 10);
+            if (!Number.isNaN(parsed)) monthVal = parsed;
+          }
+        }
+
+        return year === yil && day === gun && monthVal === targetMonthNumber;
+      });
+
+    if (!docs.length) return null;
+
+    let index = 0;
+    if (typeof soruNo === "number" && soruNo >= 1 && soruNo <= docs.length) {
+      index = soruNo - 1;
+    }
+
+    const data = docs[index];
+    const q = buildQuestionFromDocData(data);
+    return q;
+  } catch (e) {
+    logger.error("getQuestionByDateFromFirestore hata:", e);
+    return null;
+  }
+}
+
+// Belirli bir kategoriden rastgele bir soru çek
+// 🔧 BURASI DAHA ESNEK HALE GETİRİLDİ (kategori adını contains ile eşleştiriyor)
+async function getRandomQuestionByCategoryFromFirestore(categoryName) {
+  try {
+    const snap = await db.collection("sorular").get();
+
+    if (snap.empty) return null;
+
+    const target = String(categoryName || "").toLowerCase();
+
+    const docs = snap.docs
+      .map((d) => d.data())
+      .filter((d) => {
+        const rawCat =
+          d.kategori || d.category || d.categoryName || d.kategoriAdi || "";
+        const cat = String(rawCat || "").toLowerCase();
+        if (!cat) return false;
+
+        // Örn: target = "araç teknik"
+        // cat  = "Araç Teknik", "Motor ve Araç Bakımı", "Araç Tekniği" vs.
+        return (
+          cat === target ||
+          cat.includes(target) ||
+          target.includes(cat)
+        );
+      });
+
+    if (!docs.length) return null;
+
+    const rndIndex = Math.floor(Math.random() * docs.length);
+    const data = docs[rndIndex];
+    const q = buildQuestionFromDocData(data);
+    return q;
+  } catch (e) {
+    logger.error("getRandomQuestionByCategoryFromFirestore hata:", e);
+    return null;
+  }
+}
+
+// Uygulamanın genel istatistikleri (toplam soru / sınav / kategori)
+async function getExamStatsFromFirestore() {
+  try {
+    const snap = await db.collection("sorular").get();
+    if (snap.empty) {
+      return {
+        totalQuestions: 0,
+        totalExams: 0,
+        totalCategories: 0,
+      };
+    }
+
+    const totalQuestions = snap.size;
+    const examSet = new Set();
+    const categorySet = new Set();
+
+    snap.docs.forEach((doc) => {
+      const d = doc.data();
+      const yil = d["yıl"] || d["yil"] || 0;
+      const ay = d["ay"] || "";
+      const gun = d["gün"] || d["gun"] || 0;
+      const key = `${gun}|${ay}|${yil}`;
+      examSet.add(key);
+
+      if (d.kategori) {
+        categorySet.add(String(d.kategori));
+      }
+    });
+
+    return {
+      totalQuestions,
+      totalExams: examSet.size,
+      totalCategories: categorySet.size,
+    };
+  } catch (e) {
+    logger.error("getExamStatsFromFirestore hata:", e);
+    return {
+      totalQuestions: 0,
+      totalExams: 0,
+      totalCategories: 0,
+    };
+  }
+}
+
+// --------------------------------------------------------------------
 // Yerel (fallback) sınav analizi üretici
 // --------------------------------------------------------------------
 function buildLocalExamAnalysis(total, correct, wrong, topicStats) {
   const answered = correct + wrong;
-  const successRate =
-    answered > 0 ? Math.round((correct / answered) * 100) : 0;
+  const successRate = answered > 0 ? Math.round((correct / answered) * 100) : 0;
   const unanswered = total - answered;
 
   const topicLines = Object.entries(topicStats || {})
@@ -325,7 +603,8 @@ exports.analyzeExam = onRequest(async (req, res) => {
   const topicSummaryLines = Object.entries(topicStats)
     .map(([name, info]) => {
       const wrongRate = info.total
-        ? Math.round((info.wrong / info.total) * 100) : 0;
+        ? Math.round((info.wrong / info.total) * 100)
+        : 0;
       return `• ${name}: ${info.total} soru, ${info.wrong} yanlış (%${wrongRate})`;
     })
     .join("\n");
@@ -421,7 +700,7 @@ Cevabını SADECE şu JSON formatında döndür (başka bir şey ekleme):
 });
 
 // --------------------------------------------------------------------
-// 2) Trafik Koçu Sohbet Fonksiyonu (soru JSON'u ile çalışacak şekilde güçlendirildi)
+// 2) Pratik AI Sohbet Fonksiyonu (soru JSON'u + Firestore ile güçlendirildi)
 // --------------------------------------------------------------------
 exports.trafficCoachChat = onRequest(async (req, res) => {
   res.set("Access-Control-Allow-Origin", "*");
@@ -498,6 +777,154 @@ exports.trafficCoachChat = onRequest(async (req, res) => {
     focusedQuestion = examQuestions[currentQuestionIndex];
   }
 
+  // --------------------------------------------------------------
+  // 0-C) Uygulama istatistikleri soruları (toplam kaç sınav / soru / kategori)
+  // --------------------------------------------------------------
+  const statsQuestionPatterns = {
+    questions: [
+      "toplam kaç soru",
+      "toplam kac soru",
+      "kaç soru var",
+      "kac soru var",
+      "soru sayısı",
+      "soru sayisi",
+    ],
+    exams: [
+      "toplam kaç sınav",
+      "toplam kac sinav",
+      "toplam kaç sınav var",
+      "kaç sınav var",
+      "kac sinav var",
+      "kaç test var",
+      "kac test var",
+      "sınav sayısı",
+      "sinav sayisi",
+      "test sayısı",
+      "test sayisi",
+    ],
+    categories: [
+      "kaç kategori",
+      "kac kategori",
+      "kategori sayısı",
+      "kategori sayisi",
+      "toplam kategori",
+    ],
+  };
+
+  const wantsQuestions = statsQuestionPatterns.questions.some((p) =>
+    normalized.includes(p)
+  );
+  const wantsExams = statsQuestionPatterns.exams.some((p) =>
+    normalized.includes(p)
+  );
+  const wantsCategories = statsQuestionPatterns.categories.some((p) =>
+    normalized.includes(p)
+  );
+
+  if (wantsQuestions || wantsExams || wantsCategories) {
+    const stats = await getExamStatsFromFirestore();
+
+    let msgParts = [];
+    if (wantsQuestions) {
+      msgParts.push(
+        `Uygulamada kayıtlı toplam yaklaşık ${stats.totalQuestions} adet soru bulunuyor.`
+      );
+    }
+    if (wantsExams) {
+      msgParts.push(
+        `Geçmiş sınav/test sayısı yaklaşık ${stats.totalExams} farklı tarihten oluşuyor.`
+      );
+    }
+    if (wantsCategories) {
+      msgParts.push(
+        `Soru kategorisi sayısı (örneğin Trafik ve Çevre Bilgisi, İlk Yardım, Araç Tekniği, Trafik Adabı vb.) yaklaşık ${stats.totalCategories} olarak görünüyor.`
+      );
+    }
+
+    if (!msgParts.length) {
+      msgParts.push(
+        "Uygulamadaki soru ve sınav sayıları hakkında bilgi almak için örneğin 'toplam kaç soru var' şeklinde sorabilirsin."
+      );
+    }
+
+    return res.status(200).json({
+      answer: msgParts.join(" "),
+    });
+  }
+
+  // --------------------------------------------------------------
+  // 0-D) Tarihli sınav / kategori isteği için Firestore'dan soru çek
+  // --------------------------------------------------------------
+  let firestoreQuestion = null;
+  let firestoreIntentNote = "";
+
+  // Soru numarası (örn. "3. soruyu çöz")
+  let requestedQuestionNumber = null;
+  const qNumMatch = normalized.match(/(\d+)\s*\.\s*soru/);
+  if (qNumMatch) {
+    requestedQuestionNumber = parseInt(qNumMatch[1], 10);
+  }
+
+  // a) 10 temmuz 2024 gibi belirli bir tarih
+  const dateInfo = parseTurkishDateFromText(normalized);
+  if (dateInfo) {
+    firestoreQuestion = await getQuestionByDateFromFirestore(
+      dateInfo.gun,
+      dateInfo.monthNumber, // artık monthNumber kullanıyoruz
+      dateInfo.yil,
+      requestedQuestionNumber
+    );
+    if (firestoreQuestion) {
+      firestoreIntentNote = `${dateInfo.gun} ${dateInfo.monthName} ${dateInfo.yil} tarihli sınavdan bir soru veritabanından getirildi.`;
+    }
+  }
+
+  // b) Kategori bazlı soru isteği (trafik ve çevre, ilk yardım, araç teknik, trafik adabı)
+  if (!firestoreQuestion) {
+    const categoryKeyMap = {
+      "trafik ve çevre": "trafik ve çevre",
+      "trafik ve cevre": "trafik ve çevre",
+      "trafik ve çevre bilgisi": "trafik ve çevre",
+
+      "trafik adabı": "trafik adabı",
+      "trafik adabi": "trafik adabı",
+
+      "ilk yardım": "ilk yardım",
+      "ilk yardım bilgisi": "ilk yardım",
+      "ilkyardım": "ilk yardım",
+      "ilkyardim": "ilk yardım",
+
+      "araç teknik": "araç teknik",
+      "arac teknik": "araç teknik",
+      "araç tekniği": "araç teknik",
+      "arac tekniği": "araç teknik",
+      "arac teknigi": "araç teknik",
+      "motor ve araç": "araç teknik",
+    };
+
+    let matchedCanonical = null;
+    for (const [key, canonical] of Object.entries(categoryKeyMap)) {
+      if (normalized.includes(key)) {
+        matchedCanonical = canonical;
+        break;
+      }
+    }
+
+    if (matchedCanonical) {
+      firestoreQuestion = await getRandomQuestionByCategoryFromFirestore(
+        matchedCanonical
+      );
+      if (firestoreQuestion) {
+        firestoreIntentNote = `"${matchedCanonical}" kategorisinden bir soru veritabanından seçildi.`;
+      }
+    }
+  }
+
+  // Eğer Firestore'dan soru bulunduysa, odak soruyu override et
+  if (firestoreQuestion) {
+    focusedQuestion = firestoreQuestion;
+  }
+
   const examContextJson = JSON.stringify(
     {
       focusedQuestion: focusedQuestion || null,
@@ -525,7 +952,7 @@ exports.trafficCoachChat = onRequest(async (req, res) => {
   if (isGreeting) {
     return res.status(200).json({
       answer:
-        "Ben Trafik Koçu yapay zekâyım. Ehliyet sınavı, trafik kuralları, trafik işaretleri, ilk yardım ve araç tekniğiyle ilgili sorun varsa yaz; birlikte çözelim.",
+        "Merhaba, ben Pratik AI yapay zekâyım. Ehliyet sınavı, trafik kuralları, trafik ve çevre bilgisi, ilk yardım, trafik adabı ve araç tekniği konularında sana yardımcı olabilirim. Hangi konuda yardımcı olmamı istersin?",
     });
   }
 
@@ -588,7 +1015,7 @@ exports.trafficCoachChat = onRequest(async (req, res) => {
   if (hasOffTopic && !hasExamHint) {
     return res.status(200).json({
       answer:
-        "Ben bir trafik koçuyum; yalnızca ehliyet sınavı, trafik kuralları, trafik işaretleri, ilk yardım ve araç tekniği ile ilgili sorularda yardımcı olabiliyorum.",
+        "Ben bir Pratik AI'yım; yalnızca ehliyet sınavı, trafik kuralları, trafik ve çevre bilgisi, trafik işaretleri, ilk yardım, trafik adabı ve araç tekniği ile ilgili sorularda yardımcı olabiliyorum.",
     });
   }
 
@@ -613,6 +1040,7 @@ exports.trafficCoachChat = onRequest(async (req, res) => {
     "geçiş üstünlüğü",
     "trafik adabı",
     "trafik ve çevre",
+    "trafik ve cevre",
     "çevre bilgisi",
     "emniyet kemeri",
     "hız",
@@ -640,7 +1068,7 @@ exports.trafficCoachChat = onRequest(async (req, res) => {
   if (!hasDomainKeyword && !hasExamHint && !isExamContextAvailable) {
     return res.status(200).json({
       answer:
-        "Ben sadece ehliyet yazılı sınavı, trafik kuralları, trafik işaretleri, ilk yardım, trafik adabı ve araç tekniği konularında yardımcı olabilirim. Bu alanlardan bir soru ya da kural yazarsan ayrıntılı şekilde açıklarım.",
+        "Ben sadece ehliyet yazılı sınavı, trafik kuralları, trafik ve çevre bilgisi, trafik işaretleri, ilk yardım, trafik adabı ve araç tekniği konularında yardımcı olabilirim. Bu alanlardan bir soru ya da kural yazarsan ayrıntılı şekilde açıklarım.",
     });
   }
 
@@ -659,6 +1087,9 @@ Yalnızca şu alanlarda cevap ver:
 ELİNDE OPSİYONEL SINAV SORUSU VERİSİ VAR (JSON):
 ${examContextJson || "boş"}
 
+Ek bilgi:
+${firestoreIntentNote || "Soru JSON'u uygulamanın veritabanından veya sınav ekranından geliyor."}
+
 Bu JSON'da:
 - "focusedQuestion" alanı tek bir soruyu temsil edebilir. Örnek:
   {
@@ -670,7 +1101,8 @@ Bu JSON'da:
 
 ÖNEMLİ:
 - Öğrencinin mesajında "bu soruyu çöz", "bu 1. soruyu çöz",
-  "5. soruyu açıklar mısın", "az önceki soruyu anlat" gibi ifadeler varsa
+  "5. soruyu açıklar mısın", "10 temmuz 2024 tarihli soruyu çöz",
+  "araç teknikten bir soru çöz" gibi ifadeler varsa
   ve JSON içinde bir soru varsa, O SORUYU baz al.
     - Soru metnini kendi cümlelerinle kısaca özetle.
     - Sonra mutlaka şu başlıkları kullan:

@@ -19,6 +19,7 @@ import 'pages/police_isaretleri_page.dart';
 import 'pages/hiz_kurallari_page.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'pages/disclaimer_page.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -47,7 +48,7 @@ class _EhliyetAppState extends State<EhliyetApp> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Trafik Koçu Uygulaması Hakkında'),
+        title: const Text('Pratik AI Uygulaması Hakkında'),
         contentPadding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
         content: SingleChildScrollView(
           child: Column(
@@ -173,7 +174,7 @@ class _EhliyetAppState extends State<EhliyetApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Trafik Koçu',
+      title: 'Pratik AI',
       theme: _buildLightTheme(),
       darkTheme: _buildDarkTheme(),
       themeMode: _isDarkMode ? ThemeMode.dark : ThemeMode.light,
@@ -240,7 +241,7 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  // 🧠 Trafik Koçu yapay zekâ sohbet endpoint'i
+  // 🧠 Pratik AI yapay zekâ sohbet endpoint'i
   static const String _aiChatUrl =
       'https://trafficcoachchat-3l4xnlf4ba-uc.a.run.app';
 
@@ -274,7 +275,7 @@ class _HomePageState extends State<HomePage> {
                       const Icon(Icons.smart_toy_outlined),
                       const SizedBox(width: 8),
                       Text(
-                        'Trafik Koçu Yapay Zekâ',
+                        'Pratik AI Yapay Zekâ',
                         style: Theme.of(context).textTheme.titleMedium,
                       ),
                       const Spacer(),
@@ -391,7 +392,7 @@ class _HomePageState extends State<HomePage> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Trafik Koçu Uygulaması Hakkında'),
+        title: const Text('Pratik AI Uygulaması Hakkında'),
         contentPadding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
         content: SingleChildScrollView(
           child: Column(
@@ -749,7 +750,7 @@ Future<void> _loadProgress() async {
 
   Future<void> _openInstagram() async {
     const String instagramUrl =
-        'https://www.instagram.com/ehliyethakimhoca?utm_source=ig_web_button_share_sheet&igsh=ZDNlZDc0MzIxNw==';
+        'https://www.linkedin.com/in/burakgul1006/';
     final uri = Uri.parse(instagramUrl);
 
     if (await canLaunchUrl(uri)) {
@@ -774,7 +775,7 @@ Future<void> _loadProgress() async {
 
   Future<void> _openTikTok() async {
     const String tiktokUrl =
-        'https://www.tiktok.com/@hakimhocaa?is_from_webapp=1&sender_device=pc';
+        'https://www.linkedin.com/in/burakgul1006/';
     final uri = Uri.parse(tiktokUrl);
     if (await canLaunchUrl(uri)) {
       final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
@@ -796,12 +797,12 @@ Future<void> _loadProgress() async {
 
   Future<void> _shareApp() async {
     const String message =
-        'Trafik Koçu uygulamasını dene! Sınav soruları, işaretler ve daha fazlası.';
+        'Pratik AI uygulamasını dene! Sınav soruları, işaretler ve daha fazlası.';
     const String androidUrl =
         'https://play.google.com/store/games?hl=tr';
     final shareText = '$message\n\nAndroid: $androidUrl';
     try {
-      await Share.share(shareText, subject: 'Trafik Koçu');
+      await Share.share(shareText, subject: 'Pratik AI');
     } catch (e) {
       _showMessage('Paylaşım sırasında hata oluştu.');
     }
@@ -1157,6 +1158,21 @@ Future<void> _loadProgress() async {
                 },
               ),
               const Divider(),
+
+                 ListTile(
+                leading: const Icon(Icons.rule_folder_outlined),
+                title: const Text('Sorumluluk Reddi ve Kaynaklar'),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const DisclaimerPage(),
+                    ),
+                  );
+                },
+              ),
+
+
               ListTile(
                 leading: const Icon(Icons.privacy_tip_outlined),
                 title: const Text('Gizlilik Şartları'),
@@ -1223,7 +1239,7 @@ Future<void> _loadProgress() async {
         ClipRRect(
           borderRadius: BorderRadius.circular(6),
           child: Image.asset(
-            'lib/assests/logo/logo.png',
+            'lib/assests/logo/ic_launcher2.png',
             height: 24,
             width: 24,
             fit: BoxFit.cover,
@@ -1237,7 +1253,7 @@ Future<void> _loadProgress() async {
               gradient.createShader(Offset.zero & bounds.size),
           blendMode: BlendMode.srcIn,
           child: const Text(
-            'Trafik Koçu',
+            'Pratik AI',
             style: TextStyle(
               fontSize: 22,
               fontWeight: FontWeight.w800,
@@ -1261,7 +1277,7 @@ Future<void> _loadProgress() async {
 
   Widget _buildLiveLessonContactCard() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    const String maleInstructorName = 'Hakim Hoca';
+    const String maleInstructorName = 'Ali Hoca';
     const String femaleInstructorName = 'Ece Hoca';
     // Update these numbers with country code, without leading + or 00
     const String maleInstructorPhone = '905426588530';
@@ -1269,7 +1285,7 @@ Future<void> _loadProgress() async {
 
     Future<void> openWhatsApp(String phone, String name) async {
       final message =
-          'Merhaba $name, Trafik Koçu uygulamasından canlı/özel ders talep ediyorum.';
+          'Merhaba $name, Pratik AI uygulamasından canlı/özel ders talep ediyorum.';
       final uri = Uri.parse(
         'https://wa.me/$phone?text=${Uri.encodeComponent(message)}',
       );
