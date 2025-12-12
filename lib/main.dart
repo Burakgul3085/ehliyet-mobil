@@ -174,6 +174,7 @@ class _EhliyetAppState extends State<EhliyetApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      debugShowCheckedModeBanner: false,
       title: 'Pratik AI',
       theme: _buildLightTheme(),
       darkTheme: _buildDarkTheme(),
