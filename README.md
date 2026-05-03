@@ -33,31 +33,35 @@ Projenin temel klasör yapısı aşağıdaki gibidir:
 
 ```
 .
-├── functions/               # Firebase Cloud Functions (Backend) kaynak kodları
-│   ├── index.js             # Ana Cloud Functions mantığı, AI ve Firestore entegrasyonu
-│   ├── package.json         # Functions için Node.js bağımlılıkları ve script'ler
-│   └── package-lock.json    # Functions bağımlılıklarının kilit dosyası
-├── ios/                     # Flutter iOS uygulamasına özel dosyalar
+├── README.md
+├── functions/                 # Firebase Cloud Functions (Backend) kaynak kodları
+│   ├── index.js               # Ana Cloud Functions mantığı, AI ve Firestore entegrasyonu
+│   ├── package-lock.json      # Functions bağımlılıklarının kilit dosyası
+│   └── package.json           # Functions için Node.js bağımlılıkları ve script'ler
+├── ios/                       # Flutter iOS uygulamasına özel dosyalar
 │   └── Runner/
-│       └── Assets.xcassets/ # iOS uygulama ikonları ve açılış ekranı görselleri
-│           ├── AppIcon.appiconset/Contents.json
-│           ├── LaunchImage.imageset/Contents.json
-│           └── LaunchImage.imageset/README.md
-├── lib/                     # Flutter uygulamasının Dart kaynak kodları (Frontend)
+│       └── Assets.xcassets/   # iOS uygulama ikonları ve açılış ekranı görselleri
+│           ├── AppIcon.appiconset/
+│           │   └── Contents.json
+│           └── LaunchImage.imageset/
+│               ├── Contents.json
+│               └── README.md
+├── lib/                       # Flutter uygulamasının Dart kaynak kodları (Frontend)
 │   └── data/
 │       └── traffic_signs.json # Trafik işaretlerinin statik veri dosyası
-├── macos/                   # Flutter macOS uygulamasına özel dosyalar
+├── macos/                     # Flutter macOS uygulamasına özel dosyalar
 │   └── Runner/
-│       └── Assets.xcassets/ # macOS uygulama ikonları
-│           └── AppIcon.appiconset/Contents.json
-├── web/                     # Flutter web uygulamasına özel dosyalar
-│   ├── index.html           # Web uygulamasının ana HTML dosyası
-│   └── manifest.json        # Web uygulama manifest dosyası
-└── windows/                 # Flutter Windows uygulamasına özel dosyalar
-    └── runner/              # Windows masaüstü uygulamasının C++ başlatma ve pencere yönetimi kodları
+│       └── Assets.xcassets/   # macOS uygulama ikonları
+│           └── AppIcon.appiconset/
+│               └── Contents.json
+├── web/                       # Flutter web uygulamasına özel dosyalar
+│   ├── index.html             # Web uygulamasının ana HTML dosyası
+│   └── manifest.json          # Web uygulama manifest dosyası
+└── windows/                   # Flutter Windows uygulamasına özel dosyalar
+    └── runner/                # Windows masaüstü uygulamasının C++ başlatma ve pencere yönetimi kodları
         ├── flutter_window.cpp
         ├── main.cpp
-        └── utils.cpp
+        ├── utils.cpp
         └── win32_window.cpp
 ```
 
