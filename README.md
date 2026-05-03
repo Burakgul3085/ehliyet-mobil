@@ -31,35 +31,57 @@ Bu proje, modern ve ölçeklenebilir teknolojileri bir araya getirerek geliştir
 
 Projenin temel klasör yapısı aşağıdaki gibidir:
 
-```
-.
-├── functions/               # Firebase Cloud Functions (Backend) kaynak kodları
-│   ├── index.js             # Ana Cloud Functions mantığı, AI ve Firestore entegrasyonu
-│   ├── package.json         # Functions için Node.js bağımlılıkları ve script'ler
-│   └── package-lock.json    # Functions bağımlılıklarının kilit dosyası
-├── ios/                     # Flutter iOS uygulamasına özel dosyalar
-│   └── Runner/
-│       └── Assets.xcassets/ # iOS uygulama ikonları ve açılış ekranı görselleri
-│           ├── AppIcon.appiconset/Contents.json
-│           ├── LaunchImage.imageset/Contents.json
-│           └── LaunchImage.imageset/README.md
-├── lib/                     # Flutter uygulamasının Dart kaynak kodları (Frontend)
-│   └── data/
-│       └── traffic_signs.json # Trafik işaretlerinin statik veri dosyası
-├── macos/                   # Flutter macOS uygulamasına özel dosyalar
-│   └── Runner/
-│       └── Assets.xcassets/ # macOS uygulama ikonları
-│           └── AppIcon.appiconset/Contents.json
-├── web/                     # Flutter web uygulamasına özel dosyalar
-│   ├── index.html           # Web uygulamasının ana HTML dosyası
-│   └── manifest.json        # Web uygulama manifest dosyası
-└── windows/                 # Flutter Windows uygulamasına özel dosyalar
-    └── runner/              # Windows masaüstü uygulamasının C++ başlatma ve pencere yönetimi kodları
-        ├── flutter_window.cpp
-        ├── main.cpp
-        └── utils.cpp
-        └── win32_window.cpp
-```
+| Bölüm / klasör      | Kısa açıklama                                                      |
+| :------------------ | :----------------------------------------------------------------- |
+| `functions/`        | Firebase Cloud Functions için backend kodları ve bağımlılıklar.    |
+| `ios/`              | Flutter iOS uygulamasının native proje dosyaları.                  |
+| `lib/`              | Flutter uygulamasının Dart kaynak kodları ve statik verileri.      |
+| `macos/`            | Flutter macOS uygulamasının native proje dosyaları.                |
+| `web/`              | Flutter web uygulamasının build çıktıları ve yapılandırma dosyaları.|
+| `windows/`          | Flutter Windows masaüstü uygulamasının native proje dosyaları.     |
+| `README.md`         | Projenin genel açıklaması ve kurulum talimatları.                  |
+
+<details><summary>Detaylı yapı</summary>
+<ul>
+    <li><code>functions/</code>:
+        <ul>
+            <li><code>index.js</code>: Ana Cloud Functions mantığı, AI ve Firestore entegrasyonu.</li>
+            <li><code>package.json</code>: Functions için Node.js bağımlılıkları ve script'ler.</li>
+            <li><code>package-lock.json</code>: Functions bağımlılıklarının kilit dosyası.</li>
+        </ul>
+    </li>
+    <li><code>ios/</code>:
+        <ul>
+            <li><code>Runner/Assets.xcassets/</code>: Uygulama ikonları ve açılış ekranı görselleri.</li>
+            <li>Diğer iOS platformuna özgü yapılandırma ve kod dosyaları.</li>
+        </ul>
+    </li>
+    <li><code>lib/</code>:
+        <ul>
+            <li><code>data/traffic_signs.json</code>: Türk Karayolları Genel Müdürlüğü'nün trafik işaretleri veritabanı.</li>
+            <li>Diğer Flutter uygulamasının Dart kaynak kodları (UI, iş mantığı vb.).</li>
+        </ul>
+    </li>
+    <li><code>macos/</code>:
+        <ul>
+            <li><code>Runner/Assets.xcassets/</code>: macOS uygulama ikonları.</li>
+            <li>Diğer macOS platformuna özgü yapılandırma ve kod dosyaları.</li>
+        </ul>
+    </li>
+    <li><code>web/</code>:
+        <ul>
+            <li><code>index.html</code>: Web uygulamasının ana HTML dosyası.</li>
+            <li><code>manifest.json</code>: Progresif Web Uygulaması (PWA) manifest dosyası.</li>
+        </ul>
+    </li>
+    <li><code>windows/</code>:
+        <ul>
+            <li><code>runner/</code>: Windows masaüstü uygulamasının C++ başlatma ve pencere yönetimi kodları.</li>
+            <li>Diğer Windows platformuna özgü yapılandırma ve kaynak dosyaları.</li>
+        </ul>
+    </li>
+</ul>
+</details>
 
 ## Kurulum ve Çalıştırma Adımları
 
